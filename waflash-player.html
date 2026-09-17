@@ -250,8 +250,18 @@ window.__waflash = { createWaflash, destroyWaflash };
       return;
     }
     fileNameEl.textContent = file.name;
-    const blobUrl = URL.createObjectURL(file);
-    bootEngine(blobUrl);
+    setStatus('busy', 'leyendo el archivo…');
+    const reader = new FileReader();
+    reader.onload = () => {
+      // Se usa un data: URI en vez de una blob: URL: este motor descarga
+      // el .swf desde un worker interno, y las blob: URLs creadas en la
+      // pestaña principal a veces no son visibles desde ese worker (se
+      // queda colgado en "Loading SWF" sin avisar). Un data: URI trae los
+      // bytes ya incluidos, así que no depende de ningún fetch.
+      bootEngine(reader.result);
+    };
+    reader.onerror = () => setStatus('bad', 'no se pudo leer el archivo');
+    reader.readAsDataURL(file);
   }
 
   function loadFromUrl(url){
