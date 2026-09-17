@@ -79,9 +79,6 @@
   .load-btn{font-family:var(--font-mono);font-size:.78rem;font-weight:500;background:transparent;
     border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 12px;cursor:pointer;}
   .load-btn:hover{border-color:var(--accent);}
-  .url-row{display:flex;gap:8px;padding:0 14px 14px;}
-  .url-row input{flex:1;background:var(--panel-2);border:1px solid var(--border);border-radius:8px;
-    padding:9px 11px;color:var(--text);font-family:var(--font-mono);font-size:.78rem;}
   .panels{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:18px;}
   @media (max-width:640px){.panels{grid-template-columns:1fr;}}
   .panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px 18px;}
@@ -106,7 +103,7 @@
     </div>
     <div class="engine-status">
       <span class="dot busy" id="statusDot"></span>
-      <span id="statusText">esperando un .swf…</span>
+      <span id="statusText">esperá un .swf…</span>
     </div>
   </header>
 
@@ -122,16 +119,11 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3v12m0 0-4-4m4 4 4-4M5 21h14"/></svg>
           </div>
           <h2>Soltá un archivo .swf acá</h2>
-          <p>O pegá la URL de un .swf, o elegilo desde tu equipo.</p>
+          <p>O elegilo desde tu equipo con el botón de abajo.</p>
           <button class="browse-btn" id="browseBtn" type="button">Elegir archivo</button>
           <input type="file" id="fileInput" accept=".swf">
         </div>
       </div>
-    </div>
-
-    <div class="url-row">
-      <input type="text" id="urlInput" placeholder="https://ejemplo.com/juego.swf">
-      <button class="load-btn" id="loadUrlBtn">cargar URL</button>
     </div>
 
     <div class="controls">
@@ -156,7 +148,7 @@
         <strong>WAFlash</strong>: un reproductor de Flash (AS2/AS3) compilado con
         <strong>Emscripten</strong> a WebAssembly, con salida por WebGL, tal como se
         distribuye en su repositorio original. Esta página es una interfaz propia
-        (arrastrar y soltar, carga por URL, pantalla completa) construida alrededor
+        (arrastrar y soltar, pantalla completa) construida alrededor
         de ese motor externo.
       </p>
     </div>
@@ -198,8 +190,6 @@ window.__waflash = { createWaflash, destroyWaflash };
   const statusText = document.getElementById('statusText');
   const fullBtn = document.getElementById('fullBtn');
   const reloadEngineBtn = document.getElementById('reloadEngineBtn');
-  const urlInput = document.getElementById('urlInput');
-  const loadUrlBtn = document.getElementById('loadUrlBtn');
 
   // OJO: el main.js original de este fork importa el motor real desde
   // nate-games/waflash, repo que ya no existe (404). En vez de pasar por
@@ -264,22 +254,11 @@ window.__waflash = { createWaflash, destroyWaflash };
     reader.readAsDataURL(file);
   }
 
-  function loadFromUrl(url){
-    if (!url) return;
-    fileNameEl.textContent = url.split('/').pop();
-    bootEngine(url);
-  }
-
   browseBtn.addEventListener('click', () => fileInput.click());
   reloadBtn.addEventListener('click', () => fileInput.click());
   fileInput.addEventListener('change', (e) => {
     const file = e.target.files && e.target.files[0];
     if (file) loadFromFile(file);
-  });
-
-  loadUrlBtn.addEventListener('click', () => loadFromUrl(urlInput.value.trim()));
-  urlInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') loadFromUrl(urlInput.value.trim());
   });
 
   fullBtn.addEventListener('click', () => {
@@ -297,8 +276,19 @@ window.__waflash = { createWaflash, destroyWaflash };
     container.addEventListener(evt, (e) => { e.preventDefault(); container.classList.remove('dragover'); });
   });
   container.addEventListener('drop', (e) => {
-    const file = e.dataTransfer.files && e.dataTransfer.files[0];
-    if (file) loadFromFile(file);
+    const archivos = e.dataTransfer.files ? Array.from(e.dataTransfer.files) : [];
+    if (!archivos.length) return;
+    // si soltás varios archivos, se toma el primer .swf de la tanda
+    const swf = archivos.find(f => /\.swf$/i.test(f.name)) || archivos[0];
+    loadFromFile(swf);
+  });
+
+  // Soltar el archivo en cualquier parte de la página (no solo sobre el escenario)
+  ['dragover','drop'].forEach(evt => {
+    document.addEventListener(evt, (e) => {
+      if (e.target === container || container.contains(e.target)) return;
+      e.preventDefault();
+    });
   });
 })();
 </script>
