@@ -172,6 +172,20 @@
 
 </div>
 
+<!--
+  Copia parcheada de waflash-player.min.js (fork isteiger/waflash).
+  El archivo original, tal como está publicado, importa el módulo del motor
+  y calcula la URL base de sus assets (.wasm/.data) apuntando siempre a
+  "nate-games/waflash@main", repositorio que ya no existe. Acá se cambian
+  esas dos referencias para que apunten a las copias que sí siguen
+  presentes en el fork "isteiger/waflash". El resto de la lógica es
+  exactamente la del archivo original.
+-->
+<script type="module">
+import createWaflashModule from"https://cdn.jsdelivr.net/gh/isteiger/waflash@main/waflash.min.js?2022091801";const WAFLASH_BASE_URL="https://cdn.jsdelivr.net/gh/isteiger/waflash@main/",createWaflash=(t,e)=>{if(t||(t=""),(e=e||{}).flashVars&&(t+=(t.includes("?")?"&":"?")+e.flashVars))return;let a={arguments:[t,"0",e.gpu?"webgl":"default",!0===e.enableFilters?"0":"1"],options:e,preRun:[],postRun:[],locateFile:(t,e)=>WAFLASH_BASE_URL+t+"?2022091801",print(t){console.log(t)},printErr(t){console.error(t)},canvas:function(){const t=document.getElementById("canvas");return t.addEventListener("webglcontextlost",(function(t){alert("WebGL context lost. You will need to reload the page."),t.preventDefault()}),!1),t}(),statusElement:document.getElementById("waflashStatus"),setStatus:t=>{if(!t)return;t=t.replace(/Downloading data\.\.\. \((\d+)\/(\d+)\)/,((t,e,a)=>"Downloading player... "+Math.floor(parseInt(e)/parseInt(a)*100)+"%")),console.log("WAFLASH> "+t);0==t.indexOf("Downloading player...")&&(t="Downloading player"),0==t.indexOf("Loading SWF...")&&(t="Loading SWF"),a.statusElement.innerHTML=t,a.showStatus()},showStatus(){a.statusElement.style.display="block"},hideStatus(){a.statusElement.style.display="none"},unload(){}};window.waflash=a,window.onerror=(t,e,n,s,o)=>{"string"!=typeof t&&(o=t.error,t.filename||t.fileName,t.lineno||t.lineNumber,t.colno||t.columnNumber,t=t.message||t.name||o&&o.message||o&&o.name);let r="";o&&o.stack&&(r=o.stack)},a.setStatus("Prepairing..."),createWaflashModule(a).then((t=>{console.log("WAFLASH> Waflash module created!")}))},destroyWaflash=()=>{console.log("WAFLASH> Waflash component will unmount!"),waflash&&waflash.unload&&waflash.unload(),window.waflash=null};
+window.__waflash = { createWaflash, destroyWaflash };
+</script>
+
 <script>
 (function(){
   const container = document.getElementById('waflashContainer');
@@ -191,8 +205,8 @@
   // nate-games/waflash, repo que ya no existe (404). En vez de pasar por
   // ese archivo roto, importamos createWaflash directo desde el motor
   // compilado que sí sigue presente en este mismo fork.
-  const ENGINE_URL = 'https://cdn.jsdelivr.net/gh/isteiger/waflash@main/waflash-player.min.js';
   let currentSwfUrl = null;
+  let hasActiveInstance = false;
 
   function setStatus(kind, text){
     statusDot.className = 'dot ' + kind;
@@ -214,13 +228,14 @@
     currentSwfUrl = swfUrl;
     setControlsEnabled(true);
     try {
-      // Cache-busting: los módulos ES se cachean por URL, así que para poder
-      // "recargar otro .swf" sin recargar la página, forzamos una re-importación.
-      const engineModule = await import(ENGINE_URL + '?run=' + Date.now());
-      if (typeof engineModule.createWaflash !== 'function') {
-        throw new Error('el módulo no exporta createWaflash — puede que este fork haya cambiado su API');
+      if (!window.__waflash || typeof window.__waflash.createWaflash !== 'function') {
+        throw new Error('el motor todavía no terminó de inicializarse en la página');
       }
-      engineModule.createWaflash(swfUrl, window.wafOptions || {});
+      if (hasActiveInstance) {
+        try { window.__waflash.destroyWaflash(); } catch (e) { /* no había nada corriendo aún */ }
+      }
+      window.__waflash.createWaflash(swfUrl, window.wafOptions || {});
+      hasActiveInstance = true;
       setStatus('ok', 'motor iniciado');
     } catch (err) {
       console.error('WAFlash engine load error', err);
