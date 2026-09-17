@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Carrete · WAFlash Edition</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<!-- Hoja de estilos original del motor WAFlash (define el look del canvas interno) -->
+<link href="https://cdn.jsdelivr.net/gh/isteiger/waflash@main/style.css" rel="stylesheet" type="text/css">
+<style>
+  :root{
+    --bg:#eef1f3; --panel:#ffffff; --panel-2:#f4f6f7; --border:#d7dde1;
+    --text:#141a1f; --muted:#5b6670; --accent:#e35b28; --accent-2:#0f8f83; --danger:#c94444;
+    --font-display:'Space Grotesk', system-ui, sans-serif;
+    --font-mono:'IBM Plex Mono', ui-monospace, monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#10161c; --panel:#171f27; --panel-2:#1d2731; --border:#2a3641;
+      --text:#e9edf0; --muted:#8b98a3; --accent:#ff7a3d; --accent-2:#3fd8c7; --danger:#ff6b6b;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#10161c; --panel:#171f27; --panel-2:#1d2731; --border:#2a3641;
+    --text:#e9edf0; --muted:#8b98a3; --accent:#ff7a3d; --accent-2:#3fd8c7; --danger:#ff6b6b;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font-display);
+    min-height:100vh;display:flex;justify-content:center;padding:32px 18px 60px;}
+  .wrap{width:100%;max-width:920px;}
+  header.top{display:flex;align-items:center;justify-content:space-between;gap:16px;
+    padding-bottom:22px;border-bottom:1px solid var(--border);margin-bottom:22px;}
+  .brand{display:flex;align-items:center;gap:12px;}
+  .brand-mark{width:34px;height:34px;flex:none;border-radius:8px;
+    background:linear-gradient(135deg,var(--accent),var(--accent-2));
+    display:flex;align-items:center;justify-content:center;}
+  .brand-mark svg{width:18px;height:18px;}
+  .brand-text h1{font-size:1.05rem;margin:0;font-weight:700;letter-spacing:.2px;}
+  .brand-text p{margin:2px 0 0;font-size:.8rem;color:var(--muted);font-family:var(--font-mono);}
+  .engine-status{display:flex;align-items:center;gap:8px;font-family:var(--font-mono);
+    font-size:.78rem;color:var(--muted);padding:6px 12px;border:1px solid var(--border);
+    border-radius:999px;background:var(--panel);}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--muted);transition:background .2s;}
+  .dot.ok{background:var(--accent-2);} .dot.bad{background:var(--danger);}
+  .dot.busy{background:var(--accent);animation:pulse 1s infinite ease-in-out;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.35;}}
+  .stage-card{background:var(--panel);border:1px solid var(--border);border-radius:14px;overflow:hidden;}
+  #waflashContainer{position:relative;width:100%;aspect-ratio:4/3;
+    background:linear-gradient(var(--panel-2) 1px, transparent 1px) 0 0/100% 24px, var(--panel-2);
+    display:flex;align-items:center;justify-content:center;}
+  #waflashContainer.dragover{outline:2px dashed var(--accent);outline-offset:-8px;}
+  .waflashCanvas{width:100% !important;height:100% !important;display:block;outline:none;}
+  #waflashStatus{position:absolute;inset:auto 16px 16px auto;font-family:var(--font-mono);
+    font-size:.75rem;color:var(--muted);background:var(--panel);border:1px solid var(--border);
+    border-radius:8px;padding:6px 10px;}
+  .drop-hint{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    text-align:center;color:var(--muted);pointer-events:none;}
+  .drop-hint-inner{max-width:320px;padding:24px;}
+  .drop-hint .icon{width:46px;height:46px;margin:0 auto 14px;border:1.5px solid var(--border);
+    border-radius:12px;display:flex;align-items:center;justify-content:center;color:var(--accent);}
+  .drop-hint h2{font-size:.98rem;margin:0 0 6px;color:var(--text);font-weight:600;}
+  .drop-hint p{font-size:.82rem;margin:0;line-height:1.5;}
+  .drop-hint .browse-btn{margin-top:14px;pointer-events:auto;background:var(--text);color:var(--bg);
+    border:none;border-radius:8px;padding:9px 16px;font-family:var(--font-display);font-weight:600;
+    font-size:.82rem;cursor:pointer;}
+  .controls{display:flex;align-items:center;gap:10px;padding:12px 14px;border-top:1px solid var(--border);
+    background:var(--panel);flex-wrap:wrap;}
+  .ctrl-btn{width:36px;height:36px;border-radius:9px;border:1px solid var(--border);
+    background:var(--panel-2);color:var(--text);cursor:pointer;display:flex;align-items:center;
+    justify-content:center;transition:border-color .15s;}
+  .ctrl-btn:hover{border-color:var(--accent);}
+  .ctrl-btn:disabled{opacity:.4;cursor:not-allowed;}
+  .ctrl-btn svg{width:16px;height:16px;}
+  .file-name{font-family:var(--font-mono);font-size:.78rem;color:var(--muted);overflow:hidden;
+    text-overflow:ellipsis;white-space:nowrap;max-width:180px;}
+  .spacer{flex:1;}
+  .load-btn{font-family:var(--font-mono);font-size:.78rem;font-weight:500;background:transparent;
+    border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 12px;cursor:pointer;}
+  .load-btn:hover{border-color:var(--accent);}
+  .url-row{display:flex;gap:8px;padding:0 14px 14px;}
+  .url-row input{flex:1;background:var(--panel-2);border:1px solid var(--border);border-radius:8px;
+    padding:9px 11px;color:var(--text);font-family:var(--font-mono);font-size:.78rem;}
+  .panels{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:18px;}
+  @media (max-width:640px){.panels{grid-template-columns:1fr;}}
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px 18px;}
+  .panel h3{margin:0 0 10px;font-size:.82rem;color:var(--text);font-family:var(--font-mono);font-weight:600;}
+  .panel ul{margin:0;padding-left:18px;color:var(--muted);font-size:.85rem;line-height:1.65;}
+  .panel p{margin:0;color:var(--muted);font-size:.85rem;line-height:1.65;}
+  input[type=file]{display:none;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="brand">
+      <div class="brand-mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#0a0a0a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+      </div>
+      <div class="brand-text">
+        <h1>Carrete</h1>
+        <p>edición WAFlash · sin Ruffle</p>
+      </div>
+    </div>
+    <div class="engine-status">
+      <span class="dot busy" id="statusDot"></span>
+      <span id="statusText">esperando un .swf…</span>
+    </div>
+  </header>
+
+  <div class="stage-card">
+    <!-- Estructura requerida por el motor WAFlash: id="waflashContainer", canvas#canvas, #waflashStatus -->
+    <div id="waflashContainer">
+      <canvas class="waflashCanvas" id="canvas" tabindex="1"></canvas>
+      <div id="waflashStatus" style="display:none;">Reproduciendo…</div>
+
+      <div class="drop-hint" id="dropHint">
+        <div class="drop-hint-inner">
+          <div class="icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3v12m0 0-4-4m4 4 4-4M5 21h14"/></svg>
+          </div>
+          <h2>Soltá un archivo .swf acá</h2>
+          <p>O pegá la URL de un .swf, o elegilo desde tu equipo.</p>
+          <button class="browse-btn" id="browseBtn" type="button">Elegir archivo</button>
+          <input type="file" id="fileInput" accept=".swf">
+        </div>
+      </div>
+    </div>
+
+    <div class="url-row">
+      <input type="text" id="urlInput" placeholder="https://ejemplo.com/juego.swf">
+      <button class="load-btn" id="loadUrlBtn">cargar URL</button>
+    </div>
+
+    <div class="controls">
+      <button class="ctrl-btn" id="fullBtn" title="Pantalla completa" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3m11-5v3a2 2 0 0 1-2 2h-3"/></svg>
+      </button>
+      <button class="ctrl-btn" id="reloadEngineBtn" title="Reiniciar el juego" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7M21 3v5h-5"/></svg>
+      </button>
+      <span class="file-name" id="fileName">ningún .swf cargado</span>
+      <div class="spacer"></div>
+      <button class="load-btn" id="reloadBtn">cargar otro .swf</button>
+    </div>
+  </div>
+
+  <div class="panels">
+    <div class="panel">
+      <h3>Qué motor usa esto</h3>
+      <p>
+        Esta interfaz <strong>no usa Ruffle</strong>. En su lugar carga el motor
+        <strong>WAFlash</strong>: un reproductor de Flash (AS2/AS3) compilado con
+        <strong>Emscripten</strong> a WebAssembly, con salida por WebGL, tal como se
+        distribuye en su repositorio original. Esta página es una interfaz propia
+        (arrastrar y soltar, carga por URL, pantalla completa) construida alrededor
+        de ese motor externo.
+      </p>
+    </div>
+    <div class="panel">
+      <h3>Importante para que funcione</h3>
+      <ul>
+        <li><strong>No la abras como artifact dentro de Claude</strong>: el entorno de vista previa de Claude bloquea scripts que no vengan de un puñado de CDNs fijas, y el motor WAFlash se sirve desde GitHub/jsdelivr, fuera de esa lista.</li>
+        <li>Descargá este archivo y abrilo desde tu propio sitio, GitHub Pages, o cualquier hosting estático — ahí no hay esa restricción y el motor cargará normalmente.</li>
+        <li>Usá únicamente archivos .swf de tu propiedad, de dominio público o con licencia abierta: no incluí ni voy a incluir juegos con copyright de terceros.</li>
+      </ul>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  const container = document.getElementById('waflashContainer');
+  const dropHint = document.getElementById('dropHint');
+  const fileInput = document.getElementById('fileInput');
+  const browseBtn = document.getElementById('browseBtn');
+  const reloadBtn = document.getElementById('reloadBtn');
+  const fileNameEl = document.getElementById('fileName');
+  const statusDot = document.getElementById('statusDot');
+  const statusText = document.getElementById('statusText');
+  const fullBtn = document.getElementById('fullBtn');
+  const reloadEngineBtn = document.getElementById('reloadEngineBtn');
+  const urlInput = document.getElementById('urlInput');
+  const loadUrlBtn = document.getElementById('loadUrlBtn');
+
+  const ENGINE_URL = 'https://cdn.jsdelivr.net/gh/isteiger/waflash@main/main.js';
+  let currentSwfUrl = null;
+
+  function setStatus(kind, text){
+    statusDot.className = 'dot ' + kind;
+    statusText.textContent = text;
+  }
+
+  function setControlsEnabled(enabled){
+    fullBtn.disabled = !enabled;
+    reloadEngineBtn.disabled = !enabled;
+  }
+
+  // El motor lee esto en window.gameConfig antes de importarse.
+  window.gameConfig = window.gameConfig || {};
+
+  async function bootEngine(swfUrl){
+    setStatus('busy', 'cargando motor…');
+    dropHint.style.display = 'none';
+    window.gameConfig.swfUrl = swfUrl;
+    currentSwfUrl = swfUrl;
+    setControlsEnabled(true);
+    try {
+      // Cache-busting: los módulos ES se cachean por URL, así que para poder
+      // "recargar otro .swf" sin recargar la página, forzamos una re-importación.
+      await import(ENGINE_URL + '?run=' + Date.now());
+      setStatus('ok', 'motor iniciado');
+    } catch (err) {
+      console.error('WAFlash engine load error', err);
+      setStatus('bad', 'no se pudo cargar el motor (¿lo abriste dentro de Claude?)');
+    }
+  }
+
+  function loadFromFile(file){
+    if (!/\.swf$/i.test(file.name)){
+      setStatus('bad', 'ese archivo no es un .swf');
+      return;
+    }
+    fileNameEl.textContent = file.name;
+    const blobUrl = URL.createObjectURL(file);
+    bootEngine(blobUrl);
+  }
+
+  function loadFromUrl(url){
+    if (!url) return;
+    fileNameEl.textContent = url.split('/').pop();
+    bootEngine(url);
+  }
+
+  browseBtn.addEventListener('click', () => fileInput.click());
+  reloadBtn.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (file) loadFromFile(file);
+  });
+
+  loadUrlBtn.addEventListener('click', () => loadFromUrl(urlInput.value.trim()));
+  urlInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') loadFromUrl(urlInput.value.trim());
+  });
+
+  fullBtn.addEventListener('click', () => {
+    if (container.requestFullscreen) container.requestFullscreen();
+  });
+
+  reloadEngineBtn.addEventListener('click', () => {
+    if (currentSwfUrl) bootEngine(currentSwfUrl);
+  });
+
+  ['dragenter','dragover'].forEach(evt => {
+    container.addEventListener(evt, (e) => { e.preventDefault(); container.classList.add('dragover'); });
+  });
+  ['dragleave','drop'].forEach(evt => {
+    container.addEventListener(evt, (e) => { e.preventDefault(); container.classList.remove('dragover'); });
+  });
+  container.addEventListener('drop', (e) => {
+    const file = e.dataTransfer.files && e.dataTransfer.files[0];
+    if (file) loadFromFile(file);
+  });
+})();
+</script>
+</body>
+</html>
