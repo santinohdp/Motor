@@ -248,6 +248,8 @@ window.__waflash = { createWaflash, destroyWaflash };
     }
   }
 
+  let currentBlobUrl = null;
+
   function loadFromFile(file){
     if (!/\.swf$/i.test(file.name)){
       setStatus('bad', 'ese archivo no es un .swf');
@@ -255,17 +257,23 @@ window.__waflash = { createWaflash, destroyWaflash };
     }
     fileNameEl.textContent = file.name;
     setStatus('busy', 'leyendo el archivo…');
-    const reader = new FileReader();
-    reader.onload = () => {
-      // Se usa un data: URI en vez de una blob: URL: este motor descarga
-      // el .swf desde un worker interno, y las blob: URLs creadas en la
-      // pestaña principal a veces no son visibles desde ese worker (se
-      // queda colgado en "Loading SWF" sin avisar). Un data: URI trae los
-      // bytes ya incluidos, así que no depende de ningún fetch.
-      bootEngine(reader.result);
-    };
-    reader.onerror = () => setStatus('bad', 'no se pudo leer el archivo');
-    reader.readAsDataURL(file);
+
+    // blob: URL en vez de data: URI. Con archivos grandes, meter todo el
+    // .swf como texto base64 en un data: URI puede hacer que el motor se
+    // quede colgado justo en "Loading SWF..." (se traba leyendo un string
+    // enorme en vez de leer los bytes del archivo directo).
+    if (currentBlobUrl) {
+      URL.revokeObjectURL(currentBlobUrl);
+      currentBlobUrl = null;
+    }
+    try {
+      const blobUrl = URL.createObjectURL(file);
+      currentBlobUrl = blobUrl;
+      bootEngine(blobUrl);
+    } catch (err) {
+      console.error('No se pudo crear el blob: URL', err);
+      setStatus('bad', 'no se pudo leer el archivo');
+    }
   }
 
   browseBtn.addEventListener('click', () => fileInput.click());
