@@ -217,20 +217,34 @@ window.__waflash = { createWaflash, destroyWaflash };
     window.gameConfig.swfUrl = swfUrl;
     currentSwfUrl = swfUrl;
     setControlsEnabled(true);
+
+    // Aviso de seguridad: si a los 20s sigue "cargando", algo se colgó.
+    // Abrí la consola del navegador (F12 → pestaña Console) y mandame
+    // el error en rojo que aparezca ahí, así puedo saber qué está fallando.
+    clearTimeout(window.__waflashTimeout);
+    window.__waflashTimeout = setTimeout(() => {
+      if (statusText.textContent.indexOf('cargando') !== -1 || statusText.textContent.indexOf('motor iniciado') === -1) {
+        setStatus('bad', 'tardó demasiado — revisá la consola (F12) y mandame el error');
+      }
+    }, 20000);
+
     try {
+      console.log('WAFLASH> intentando cargar', swfUrl.slice(0, 80) + (swfUrl.length > 80 ? '…' : ''));
       if (!window.__waflash || typeof window.__waflash.createWaflash !== 'function') {
-        throw new Error('el motor todavía no terminó de inicializarse en la página');
+        throw new Error('el motor todavía no terminó de inicializarse en la página (¿se bloqueó el script de jsdelivr?)');
       }
       if (hasActiveInstance) {
-        try { window.__waflash.destroyWaflash(); } catch (e) { /* no había nada corriendo aún */ }
+        try { window.__waflash.destroyWaflash(); } catch (e) { console.warn('no había nada corriendo aún', e); }
       }
       window.__waflash.createWaflash(swfUrl, window.wafOptions || {});
       hasActiveInstance = true;
       setStatus('ok', 'motor iniciado');
+      clearTimeout(window.__waflashTimeout);
     } catch (err) {
       console.error('WAFlash engine load error', err);
       const detail = (err && err.message) ? err.message : String(err);
       setStatus('bad', 'error al cargar el motor: ' + detail);
+      clearTimeout(window.__waflashTimeout);
     }
   }
 
