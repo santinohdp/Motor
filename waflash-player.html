@@ -143,7 +143,7 @@
       </button>
       <span class="file-name" id="fileName">ningún .swf cargado</span>
       <div class="spacer"></div>
-      <a class="load-btn" id="diagLink" href="https://cdn.jsdelivr.net/gh/isteiger/waflash@main/main.js" target="_blank" rel="noopener" style="text-decoration:none;">probar main.js</a>
+      <a class="load-btn" id="diagLink" href="https://cdn.jsdelivr.net/gh/isteiger/waflash@main/waflash-player.min.js" target="_blank" rel="noopener" style="text-decoration:none;">probar motor</a>
       <button class="load-btn" id="reloadBtn">cargar otro .swf</button>
     </div>
   </div>
@@ -187,7 +187,11 @@
   const urlInput = document.getElementById('urlInput');
   const loadUrlBtn = document.getElementById('loadUrlBtn');
 
-  const ENGINE_URL = 'https://cdn.jsdelivr.net/gh/isteiger/waflash@main/main.js';
+  // OJO: el main.js original de este fork importa el motor real desde
+  // nate-games/waflash, repo que ya no existe (404). En vez de pasar por
+  // ese archivo roto, importamos createWaflash directo desde el motor
+  // compilado que sí sigue presente en este mismo fork.
+  const ENGINE_URL = 'https://cdn.jsdelivr.net/gh/isteiger/waflash@main/waflash-player.min.js';
   let currentSwfUrl = null;
 
   function setStatus(kind, text){
@@ -212,7 +216,11 @@
     try {
       // Cache-busting: los módulos ES se cachean por URL, así que para poder
       // "recargar otro .swf" sin recargar la página, forzamos una re-importación.
-      await import(ENGINE_URL + '?run=' + Date.now());
+      const engineModule = await import(ENGINE_URL + '?run=' + Date.now());
+      if (typeof engineModule.createWaflash !== 'function') {
+        throw new Error('el módulo no exporta createWaflash — puede que este fork haya cambiado su API');
+      }
+      engineModule.createWaflash(swfUrl, window.wafOptions || {});
       setStatus('ok', 'motor iniciado');
     } catch (err) {
       console.error('WAFlash engine load error', err);
